@@ -11,14 +11,145 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
 
 
-INTERPRETACIONES = {
-    "VT": "Evento Volcano-Tectónico (VT): fracturamiento de rocas por presión o movimiento de magma.",
-    "VD": "Evento Volcano-Tectónico Profundo (VD): procesos internos a mayor profundidad.",
-    "LP": "Sismo de Largo Período (LP): movimiento de fluidos volcánicos.",
-    "LH": "Evento Largo Período Híbrido (LH): combinación de VT y LP.",
-    "TD": "Tremor de Degasificación (TD): liberación sostenida de gases.",
-    "TO": "Tremor de Degasificación (TD): liberación sostenida de gases."
+# =====================================================
+# INTERPRETACIONES DETALLADAS POR TIPO
+# =====================================================
+INTERPRETACIONES_BASE = {
+    "VT": {
+        "titulo": "Evento Volcano-Tectónico (VT)",
+        "descripcion": "Fracturamiento de roca sólida por presión magmática o ajustes estructurales del volcán.",
+        "causa": "Se produce cuando el magma empuja contra la roca circundante, generando esfuerzos que superan la resistencia del material. Es el evento más común en volcanes activos.",
+        "caracteristicas": {
+            "frecuencia": "Alta (generalmente > 3 Hz). La ruptura de roca dura genera ondas de alta frecuencia.",
+            "duracion": "Corta (segundos a minutos). El fracturamiento es un evento rápido e instantáneo.",
+            "energia": "Alta a muy alta. La liberación de energía acumulada en la roca es explosiva."
+        },
+        "implicacion": "Indica actividad magmática activa cerca de la superficie. Si aumenta en frecuencia, puede preceder a una erupción."
+    },
+    "VD": {
+        "titulo": "Evento Volcano-Tectónico Profundo (VD)",
+        "descripcion": "Fracturamiento de roca a profundidades mayores (> 5 km), generalmente relacionado con el ascenso de magma desde cámaras profundas.",
+        "causa": "Movimiento del magma en conductos profundos o colapso de cámaras magmáticas profundas. La señal se atenúa al llegar a la superficie.",
+        "caracteristicas": {
+            "frecuencia": "Media-alta (2-5 Hz). La atenuación de la trayectoria larga reduce ligeramente la frecuencia respecto a VT superficial.",
+            "duracion": "Corta a media. Similar a VT pero con ligero alargamiento por reverberación en trayectos profundos.",
+            "energia": "Moderada a alta. Aunque la fuente es potente, la distancia atenúa la energía registrada en superficie."
+        },
+        "implicacion": "Sugiere recarga magmática desde profundidad. Es un indicador temprano de que el sistema volcánico está recibiendo magma nuevo."
+    },
+    "LP": {
+        "titulo": "Sismo de Largo Período (LP)",
+        "descripcion": "Resonancia de fluidos volcánicos (magmaticos o hidrotermales) dentro de conductos o cavidades del volcán.",
+        "causa": "El movimiento de gases o líquidos a través de estrechamientos en chimeneas volcánicas genera una resonancia tipo 'tubo de órgano'. La fuente no es fractura de roca, sino oscilación de fluidos.",
+        "caracteristicas": {
+            "frecuencia": "Baja (< 2 Hz). Los fluidos pesados y las cavidades grandes generan oscilaciones lentas.",
+            "duracion": "Larga (minutos a horas). La resonancia de fluidos es un proceso sostenido en el tiempo.",
+            "energia": "Moderada. La energía se libera de forma continua y sostenida, no explosiva."
+        },
+        "implicacion": "Indica presencia de fluidos magmáticos o hidrotermales en movimiento. Es precursor clásico de actividad eruptiva."
+    },
+    "LH": {
+        "titulo": "Evento Híbrido (LH)",
+        "descripcion": "Señal mixta que combina una fase inicial de baja frecuencia (LP) seguida de una fase de alta frecuencia (VT).",
+        "causa": "Inicia con el movimiento de fluidos que genera una resonancia (fase LP), seguido de la ruptura de la roca circundante por la presión ejercida por esos mismos fluidos (fase VT).",
+        "caracteristicas": {
+            "frecuencia": "Variable (baja al inicio, alta al final). La mezcla de ambas fases produce un espectro ancho.",
+            "duracion": "Variable a larga. Dura más que un VT puro porque incluye la fase de resonancia inicial.",
+            "energia": "Moderada a alta. Acumula energía tanto de la resonancia fluida como del fracturamiento final."
+        },
+        "implicacion": "Es una señal de transición crítica: los fluidos están interactuando activamente con la roca circundante. Puede indicar desgasificación intensa o apertura de nuevas chimeneas."
+    },
+    "TD": {
+        "titulo": "Tremor de Degasificación (TD)",
+        "descripcion": "Señal sísmica continua de muy baja frecuencia generada por la liberación sostenida de gases volcánicos.",
+        "causa": "Flujo turbulento de gases magmáticos (principalmente H₂O, CO₂, SO₂) a través de conductos volcánicos. A diferencia del LP, no hay una resonancia definida, sino un tremor continuo.",
+        "caracteristicas": {
+            "frecuencia": "Muy baja (< 1 Hz). El flujo de gases es un proceso lento y continuo.",
+            "duracion": "Muy larga (horas a días). La degasificación es un proceso persistente.",
+            "energia": "Baja a moderada sostenida. No hay picos de energía, sino una liberación constante en el tiempo."
+        },
+        "implicacion": "Indica desgasificación activa del magma. Si se intensifica, puede preceder a erupciones efusivas o explosivas con alto contenido de gases."
+    }
 }
+
+
+def generar_interpretacion_detallada(tipo_predicho, probabilidades, frecuencia, duracion, energia):
+    """
+    Genera una interpretación personalizada explicando POR QUÉ el modelo 
+    asignó esa probabilidad basándose en los valores de entrada.
+    """
+    
+    tipo = tipo_predicho
+    info = INTERPRETACIONES_BASE.get(tipo, INTERPRETACIONES_BASE.get("VT"))
+    
+    # Obtener probabilidades ordenadas
+    probs_ordenadas = sorted(probabilidades.items(), key=lambda x: x[1], reverse=True)
+    top_prob = probs_ordenadas[0][1] * 100
+    segunda_prob = probs_ordenadas[1][1] * 100 if len(probs_ordenadas) > 1 else 0
+    tipo_top = probs_ordenadas[0][0]
+    
+    # Análisis de rangos típicos para contextualizar los valores
+    rangos = {
+        "VT":  {"freq": (3.0, 15.0), "dur": (0.5, 30.0), "eng": (100.0, 10000.0)},
+        "VD":  {"freq": (2.0, 5.0),  "dur": (1.0, 45.0),  "eng": (50.0, 5000.0)},
+        "LP":  {"freq": (0.1, 2.0),  "dur": (30.0, 300.0), "eng": (10.0, 1000.0)},
+        "LH":  {"freq": (1.0, 5.0),  "dur": (10.0, 120.0), "eng": (20.0, 2000.0)},
+        "TD":  {"freq": (0.1, 1.0),  "dur": (60.0, 1000.0), "eng": (5.0, 500.0)}
+    }
+    
+    # Determinar qué parámetro fue más determinante
+    rango_tipo = rangos.get(tipo, rangos["VT"])
+    
+    # Calcular qué tan "típico" es cada valor para el tipo predicho (0-100%)
+    def tipicidad(valor, min_r, max_r):
+        if max_r == min_r:
+            return 100
+        return max(0, min(100, 100 - abs((valor - (min_r + max_r)/2) / ((max_r - min_r)/2)) * 100))
+    
+    tip_frec = tipicidad(frecuencia, rango_tipo["freq"][0], rango_tipo["freq"][1])
+    tip_dur = tipicidad(duracion, rango_tipo["dur"][0], rango_tipo["dur"][1])
+    tip_eng = tipicidad(energia, rango_tipo["eng"][0], rango_tipo["eng"][1])
+    
+    # El parámetro más determinante es el más típico (mejor ajuste)
+    determinantes = [
+        ("frecuencia", tip_frec, frecuencia, "Hz"),
+        ("duración", tip_dur, duracion, "s"),
+        ("energía", tip_eng, energia, "J")
+    ]
+    determinantes.sort(key=lambda x: x[1], reverse=True)
+    param_clave, tipicidad_val, val_clave, unidad = determinantes[0]
+    
+    # Construir texto explicativo
+    texto = f"""🌋 {info['titulo']}
+
+📊 ¿Por qué esta clasificación?
+El modelo asignó {top_prob:.1f}% de probabilidad a este evento porque los parámetros de entrada se alinean fuertemente con las características típicas de un {tipo}.
+
+🔬 Análisis de parámetros:
+• Frecuencia: {frecuencia:.2f} Hz → {info['caracteristicas']['frecuencia']}
+• Duración: {duracion:.2f} s → {info['caracteristicas']['duracion']}
+• Energía: {energia:.2f} J → {info['caracteristicas']['energia']}
+
+🎯 Parámetro más determinante: {param_clave.upper()} ({val_clave:.2f} {unidad})
+Este valor tiene un {tipicidad_val:.0f}% de coincidencia con el perfil típico de {tipo}, lo que fue clave para la decisión del modelo.
+
+📖 Descripción:
+{info['descripcion']}
+
+🔍 Causa física:
+{info['causa']}
+
+⚠️ Implicación volcánica:
+{info['implicacion']}
+"""
+    
+    # Si la segunda probabilidad es significativa (>20%), mencionar la ambigüedad
+    if segunda_prob > 20:
+        tipo_2 = probs_ordenadas[1][0]
+        info_2 = INTERPRETACIONES_BASE.get(tipo_2, {})
+        texto += f"\n⚡ Nota: El modelo detectó una ambigüedad del {segunda_prob:.1f}% con {tipo_2} ({info_2.get('titulo', '')}). Esto sugiere que el evento podría tener características mixtas o estar en una fase de transición.\n"
+    
+    return texto.strip()
 
 
 def entrenar_modelo(ruta):
@@ -158,7 +289,6 @@ def entrenar_modelo(ruta):
         n_features = X_train.shape[1]
         n_classes = len(clases_unicas)
         
-        # Arquitectura PEQUEÑA para no quedarse sin RAM
         if n_samples < 100:
             hidden_layers = (16, 8)
             max_iter = 500
@@ -166,8 +296,8 @@ def entrenar_modelo(ruta):
             hidden_layers = (32, 16)
             max_iter = 800
         else:
-            hidden_layers = (32, 16, 8)   # ← MUCHO más pequeño que antes
-            max_iter = 500                  # ← Menos iteraciones
+            hidden_layers = (32, 16, 8)
+            max_iter = 500
         
         batch_size = min(512, max(64, n_samples // 10))
         
@@ -183,8 +313,8 @@ def entrenar_modelo(ruta):
             batch_size=batch_size,
             learning_rate='adaptive',
             max_iter=max_iter,
-            early_stopping=False,     # ← CLAVE: no duplica memoria con validation set
-            tol=1e-3,                 # ← Converge más rápido
+            early_stopping=False,
+            tol=1e-3,
             random_state=42,
             verbose=False
         )
@@ -231,7 +361,7 @@ def entrenar_modelo(ruta):
 
 
 def predecir_evento(modelo, scaler, encoder, frecuencia, duracion, energia):
-    """Predice el tipo de evento sísmico."""
+    """Predice el tipo de evento sísmico con interpretación detallada."""
     
     X = np.array([[frecuencia, duracion, energia]])
     X = scaler.transform(X)
@@ -249,10 +379,24 @@ def predecir_evento(modelo, scaler, encoder, frecuencia, duracion, energia):
     ranking = sorted(probabilidades.items(), key=lambda x: x[1], reverse=True)
     tipo_mas_probable, confianza = ranking[0]
     
+    # Generar interpretación detallada personalizada
+    interpretacion = generar_interpretacion_detallada(
+        tipo_mas_probable, 
+        probabilidades, 
+        frecuencia, 
+        duracion, 
+        energia
+    )
+    
     return {
         "tipo": tipo_mas_probable,
         "confianza": round(confianza * 100, 2),
         "probabilidades": probabilidades,
         "ranking": ranking,
-        "interpretacion": INTERPRETACIONES.get(tipo_mas_probable, "Clasificación generada por la red neuronal.")
+        "interpretacion": interpretacion,
+        "parametros_entrada": {
+            "frecuencia": frecuencia,
+            "duracion": duracion,
+            "energia": energia
+        }
     }
