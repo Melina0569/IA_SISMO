@@ -22,7 +22,7 @@ INTERPRETACIONES = {
 
 
 def entrenar_modelo(ruta):
-    """Entrena el modelo MLP con manejo completo de errores."""
+    """Entrena el modelo MLP optimizado para poca RAM (Render gratuito)."""
     
     print(f"\n{'='*60}")
     print(f"ENTRENAMIENTO INICIADO")
@@ -48,7 +48,6 @@ def entrenar_modelo(ruta):
         print(f"Columnas: {list(df.columns)}")
         
         # ========== 2. LIMPIEZA ==========
-        # Eliminar filas con valores faltantes
         df_before = len(df)
         df = df.dropna()
         print(f"Después de dropna: {len(df)} (eliminados: {df_before - len(df)})")
@@ -57,11 +56,9 @@ def entrenar_modelo(ruta):
             raise ValueError("El dataset quedó vacío después de eliminar nulos")
         
         # ========== 3. VALIDAR COLUMNAS ==========
-        # Buscar columnas similares (por si hay espacios, mayúsculas, etc.)
         columnas_originales = list(df.columns)
         columnas_lower = [c.strip().upper() for c in columnas_originales]
         
-        # Mapear nombres estándar
         col_map = {}
         nombres_esperados = {
             'FRECUENCIA_PRINCIPAL': ['FRECUENCIA_PRINCIPAL', 'FRECUENCIA', 'FREQ', 'FREQUENCY'],
@@ -83,18 +80,13 @@ def entrenar_modelo(ruta):
         if faltantes:
             raise ValueError(f"Columnas faltantes: {faltantes}. Columnas disponibles: {columnas_originales}")
         
-        # Renombrar columnas
         df = df.rename(columns={v: k for k, v in col_map.items()})
         
         # ========== 4. CONVERTIR TIPOS ==========
-        # Asegurar que las columnas numéricas sean numéricas
         for col in ['FRECUENCIA_PRINCIPAL', 'DURACION', 'ENERGIA']:
             df[col] = pd.to_numeric(df[col], errors='coerce')
         
-        # La columna TIPO debe ser string
         df['TIPO'] = df['TIPO'].astype(str).str.strip().str.upper()
-        
-        # Eliminar filas donde la conversión falló
         df = df.dropna()
         print(f"Después de conversión numérica: {len(df)}")
         
@@ -102,10 +94,8 @@ def entrenar_modelo(ruta):
             raise ValueError("No quedaron datos válidos después de la conversión")
         
         # ========== 5. NORMALIZAR TIPOS ==========
-        # Mapear TO → TD si es necesario
         df['TIPO'] = df['TIPO'].replace({'TO': 'TD'})
         
-        # Filtrar solo tipos conocidos
         tipos_validos = {'VT', 'VD', 'LP', 'LH', 'TD'}
         df = df[df['TIPO'].isin(tipos_validos)]
         print(f"Después de filtrar tipos válidos: {len(df)}")
@@ -129,14 +119,12 @@ def entrenar_modelo(ruta):
             raise ValueError(f"Se necesitan al menos 2 clases. Encontradas: {clases_unicas}")
         
         # ========== 8. DIVIDIR DATOS ==========
-        # Asegurar que haya suficientes muestras para stratify
         min_por_clase = distribucion.min()
         print(f"Mínimo por clase: {min_por_clase}")
         
         if min_por_clase < 2:
             raise ValueError(f"Clase con muy pocas muestras: {min_por_clase}. Mínimo requerido: 2")
         
-        # Ajustar test_size si hay pocas muestras
         test_size = 0.25
         if min_por_clase < 4:
             test_size = 0.2
@@ -165,22 +153,23 @@ def entrenar_modelo(ruta):
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
         
-        # ========== 10. MODELO MLP ==========
+        # ========== 10. MODELO MLP (OPTIMIZADO PARA RENDER 512MB) ==========
         n_samples = len(X_train)
         n_features = X_train.shape[1]
         n_classes = len(clases_unicas)
         
-        # Ajustar arquitectura según datos
+        # Arquitectura PEQUEÑA para no quedarse sin RAM
         if n_samples < 100:
-            hidden_layers = (32, 16)
+            hidden_layers = (16, 8)
+            max_iter = 500
         elif n_samples < 1000:
-            hidden_layers = (64, 32, 16)
-        elif n_samples < 5000:
-            hidden_layers = (128, 64, 32)
+            hidden_layers = (32, 16)
+            max_iter = 800
         else:
-            hidden_layers = (256, 128, 64, 32)
+            hidden_layers = (32, 16, 8)   # ← MUCHO más pequeño que antes
+            max_iter = 500                  # ← Menos iteraciones
         
-        batch_size = min(256, max(32, n_samples // 20))
+        batch_size = min(512, max(64, n_samples // 10))
         
         print(f"\nArquitectura: {hidden_layers}")
         print(f"Batch size: {batch_size}")
@@ -193,10 +182,9 @@ def entrenar_modelo(ruta):
             alpha=0.001,
             batch_size=batch_size,
             learning_rate='adaptive',
-            max_iter=2000,
-            early_stopping=True,
-            validation_fraction=0.1,
-            n_iter_no_change=30,
+            max_iter=max_iter,
+            early_stopping=False,     # ← CLAVE: no duplica memoria con validation set
+            tol=1e-3,                 # ← Converge más rápido
             random_state=42,
             verbose=False
         )
