@@ -2,6 +2,7 @@ from flask import Flask, render_template, send_from_directory, request, jsonify
 import os
 import pandas as pd
 import joblib
+import shutil
 from utils import entrenar_modelo, predecir_evento
 from flask_cors import CORS
 
@@ -54,7 +55,6 @@ def subir():
     file.save(ruta_uploads)
 
     ruta_processed = os.path.join(PROCESSED_FOLDER, file.filename)
-    import shutil
     shutil.copy2(ruta_uploads, ruta_processed)
 
     try:
@@ -90,17 +90,35 @@ def subir():
 def entrenar():
     global modelo, scaler, encoder
 
-    data = request.get_json()
-    ruta = data.get("ruta")
-
     print(f"\n{'='*60}")
     print(f"PETICIÓN /entrenar recibida")
-    print(f"Ruta: {ruta}")
     print(f"{'='*60}")
 
-    if not ruta or not os.path.exists(ruta):
+    # ========== VALIDACIÓN CRÍTICA DEL JSON ==========
+    data = request.get_json()
+    if not data or not isinstance(data, dict):
+        print("ERROR: No se recibió JSON válido")
+        return jsonify({
+            "error": "No se recibieron datos JSON válidos. Verifica el Content-Type.",
+            "accuracy": 0
+        }), 400
+
+    ruta = data.get("ruta")
+    print(f"Ruta recibida: {ruta}")
+
+    if not ruta:
+        print("ERROR: Falta el campo 'ruta'")
+        return jsonify({
+            "error": "Falta el campo 'ruta' en el body de la petición",
+            "accuracy": 0
+        }), 400
+
+    if not os.path.exists(ruta):
         print(f"ERROR: Archivo no encontrado: {ruta}")
-        return jsonify({"error": "Archivo no encontrado", "accuracy": 0}), 404
+        return jsonify({
+            "error": f"Archivo no encontrado: {ruta}",
+            "accuracy": 0
+        }), 404
 
     try:
         resultado, modelo, scaler, encoder = entrenar_modelo(ruta)
@@ -135,7 +153,13 @@ def predecir():
         except:
             return jsonify({"error": "Modelo no entrenado. Entrena primero."}), 400
 
+    # ========== VALIDACIÓN CRÍTICA DEL JSON ==========
     data = request.get_json()
+    if not data or not isinstance(data, dict):
+        return jsonify({
+            "error": "No se recibieron datos JSON válidos",
+            "accuracy": 0
+        }), 400
 
     try:
         resultado = predecir_evento(
@@ -151,4 +175,5 @@ def predecir():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
