@@ -1,0 +1,462 @@
+/* =====================================================
+   SEISMICPULSE AI - ESTILOS PRINCIPALES
+   ===================================================== */
+
+/* ===== RESET & BASE ===== */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #131313;
+    color: #e5e2e1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #131313;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #ff5722;
+}
+
+/* ===== SELECTION ===== */
+::selection {
+    background: rgba(255, 87, 34, 0.3);
+    color: #fff;
+}
+
+/* ===== MATERIAL ICONS ===== */
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+    font-size: 20px;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+    background: linear-gradient(180deg, #1c1b1b 0%, #161616 100%);
+}
+
+/* Nav item active glow */
+.nav-item[data-route="dashboard"].bg-surface-container-high {
+    box-shadow: 0 0 20px rgba(255, 181, 160, 0.05);
+}
+
+/* ===== CONTENT AREA ===== */
+#content-area {
+    background: 
+        radial-gradient(ellipse at 20% 50%, rgba(255, 87, 34, 0.02) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(112, 216, 200, 0.02) 0%, transparent 50%),
+        #131313;
+}
+
+/* ===== STAT CARDS ===== */
+.stat-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 181, 160, 0.3), transparent);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.stat-card:hover::before {
+    opacity: 1;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== SEISMIC NODES (Map) ===== */
+.seismic-node {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.node-core {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    position: relative;
+    z-index: 2;
+}
+
+.node-ping {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    animation: nodePing 2s ease-out infinite;
+}
+
+.node-label {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(229, 226, 225, 0.5);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.seismic-node:hover .node-label {
+    opacity: 1;
+}
+
+/* Node intensity colors */
+.seismic-node[data-intensity="high"] .node-core {
+    background: #ff5722;
+    box-shadow: 0 0 12px rgba(255, 87, 34, 0.5);
+}
+
+.seismic-node[data-intensity="high"] .node-ping {
+    background: rgba(255, 87, 34, 0.2);
+    border: 1px solid rgba(255, 87, 34, 0.3);
+}
+
+.seismic-node[data-intensity="medium"] .node-core {
+    background: #70d8c8;
+    box-shadow: 0 0 12px rgba(112, 216, 200, 0.5);
+}
+
+.seismic-node[data-intensity="medium"] .node-ping {
+    background: rgba(112, 216, 200, 0.2);
+    border: 1px solid rgba(112, 216, 200, 0.3);
+}
+
+.seismic-node[data-intensity="low"] .node-core {
+    background: #a2c9ff;
+    box-shadow: 0 0 12px rgba(162, 201, 255, 0.5);
+}
+
+.seismic-node[data-intensity="low"] .node-ping {
+    background: rgba(162, 201, 255, 0.2);
+    border: 1px solid rgba(162, 201, 255, 0.3);
+}
+
+/* ===== LIVE FEED ===== */
+.live-feed-scroll {
+    animation: liveFeed 25s linear infinite;
+}
+
+.live-feed-scroll:hover {
+    animation-play-state: paused;
+}
+
+/* ===== DROP ZONE ===== */
+#drop-zone {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#drop-zone.drag-active {
+    border-color: #ff5722 !important;
+    background: rgba(255, 87, 34, 0.05) !important;
+    transform: scale(1.01);
+}
+
+/* ===== INPUT FOCUS ===== */
+input[type="text"],
+input[type="number"],
+input[type="file"],
+select {
+    transition: all 0.3s ease;
+}
+
+input:focus {
+    box-shadow: 0 0 0 3px rgba(255, 87, 34, 0.1);
+}
+
+/* ===== RANGE SLIDER ===== */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ff5722;
+    cursor: pointer;
+    border: 2px solid #131313;
+    box-shadow: 0 0 8px rgba(255, 87, 34, 0.4);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 16px rgba(255, 87, 34, 0.6);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ff5722;
+    cursor: pointer;
+    border: 2px solid #131313;
+    box-shadow: 0 0 8px rgba(255, 87, 34, 0.4);
+}
+
+/* ===== BUTTONS ===== */
+button {
+    position: relative;
+    overflow: hidden;
+}
+
+button::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
+}
+
+button:hover::after {
+    transform: translateX(100%);
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+button:disabled::after {
+    display: none;
+}
+
+/* Primary button glow */
+.bg-primary-container {
+    position: relative;
+}
+
+.bg-primary-container::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255, 87, 34, 0.3), transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+}
+
+.bg-primary-container:hover::before {
+    opacity: 1;
+}
+
+/* ===== TABLES ===== */
+table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+table tbody tr:hover {
+    background-color: rgba(42, 42, 42, 0.5);
+}
+
+/* ===== GLASS PANELS ===== */
+.glass-panel {
+    background: rgba(30, 30, 30, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ===== LOADING OVERLAY ===== */
+#loading-overlay {
+    backdrop-filter: blur(8px);
+}
+
+/* ===== TOASTS ===== */
+#toast-container > div {
+    backdrop-filter: blur(12px);
+}
+
+/* ===== WAVEFORM ===== */
+#wave-actual {
+    filter: drop-shadow(0 0 4px rgba(255, 87, 34, 0.3));
+}
+
+#wave-predicted {
+    filter: drop-shadow(0 0 4px rgba(112, 216, 200, 0.2));
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes nodePing {
+    0% {
+        transform: scale(0.5);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(2.5);
+        opacity: 0;
+    }
+}
+
+@keyframes liveFeed {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes dash {
+    from {
+        stroke-dashoffset: 251;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes drawLine {
+    from {
+        stroke-dashoffset: 1000;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(2.5);
+        opacity: 0;
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+@keyframes scanline {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 50;
+        transform: translateX(-100%);
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+}
+
+@media (max-width: 768px) {
+    #content {
+        padding: 1rem !important;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

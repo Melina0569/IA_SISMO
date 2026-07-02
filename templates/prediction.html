@@ -1,0 +1,201 @@
+<!-- Vista de Predicción -->
+<div class="prediction-view space-y-6 max-w-5xl mx-auto">
+
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="font-display font-semibold text-2xl text-on-surface">Motor de Predicción</h2>
+            <p class="text-sm text-on-surface-variant/60 mt-1">Clasifica eventos sísmicos usando el modelo MLP entrenado</p>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-high rounded-lg border border-outline-variant/20">
+            <span class="material-symbols-outlined text-primary text-sm">psychology</span>
+            <span class="text-[10px] font-mono text-primary uppercase tracking-wider">MLP v4.2</span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+        <!-- Panel de Entrada -->
+        <div class="lg:col-span-2 bg-surface-container rounded-xl border border-outline-variant/20 p-6">
+            <div class="flex items-center gap-2 mb-6">
+                <span class="material-symbols-outlined text-primary">tune</span>
+                <h3 class="font-display font-semibold text-on-surface">Parámetros</h3>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Frecuencia -->
+                <div class="param-group">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-widest">Frecuencia</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="freq-input" min="0.1" max="100" step="0.1" value="0.1"
+                                class="w-20 bg-surface-dim border border-outline-variant/30 rounded-md px-2 py-1 text-xs font-mono text-on-surface text-right focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none"
+                                oninput="syncParamFromInput('freq', this.value)">
+                            <span id="freq-value" class="text-xs font-mono text-primary">0.0 Hz</span>
+                        </div>
+                    </div>
+                    <input type="range" id="pred-frecuencia" min="0.1" max="100" step="0.1" value="0.1" 
+                        class="w-full accent-primary h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer"
+                        oninput="syncParamFromRange('freq', this.value)">
+                    <div class="flex justify-between mt-1">
+                        <span class="text-[9px] font-mono text-on-surface-variant/30">0.1</span>
+                        <span class="text-[9px] font-mono text-on-surface-variant/30">100</span>
+                    </div>
+                </div>
+
+                <!-- Duración -->
+                <div class="param-group">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-widest">Duración</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="dur-input" min="1" max="3600" step="1" value="1"
+                                class="w-20 bg-surface-dim border border-outline-variant/30 rounded-md px-2 py-1 text-xs font-mono text-on-surface text-right focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none"
+                                oninput="syncParamFromInput('dur', this.value)">
+                            <span id="dur-value" class="text-xs font-mono text-primary">0 s</span>
+                        </div>
+                    </div>
+                    <input type="range" id="pred-duracion" min="1" max="3600" step="1" value="1" 
+                        class="w-full accent-primary h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer"
+                        oninput="syncParamFromRange('dur', this.value)">
+                    <div class="flex justify-between mt-1">
+                        <span class="text-[9px] font-mono text-on-surface-variant/30">1</span>
+                        <span class="text-[9px] font-mono text-on-surface-variant/30">3600</span>
+                    </div>
+                </div>
+
+                <!-- Energía -->
+                <div class="param-group">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-widest">Energía</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="energy-input" min="0.01" max="10" step="0.01" value="0.01"
+                                class="w-20 bg-surface-dim border border-outline-variant/30 rounded-md px-2 py-1 text-xs font-mono text-on-surface text-right focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none"
+                                oninput="syncParamFromInput('energy', this.value)">
+                            <span id="energy-value" class="text-xs font-mono text-primary">0.00 J</span>
+                        </div>
+                    </div>
+                    <input type="range" id="pred-energia" min="0.01" max="10" step="0.01" value="0.01" 
+                        class="w-full accent-primary h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer"
+                        oninput="syncParamFromRange('energy', this.value)">
+                    <div class="flex justify-between mt-1">
+                        <span class="text-[9px] font-mono text-on-surface-variant/30">0.01</span>
+                        <span class="text-[9px] font-mono text-on-surface-variant/30">10</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preajustes Rápidos -->
+            <div class="mt-6 pt-6 border-t border-outline-variant/10">
+                <span class="text-[10px] font-mono text-on-surface-variant/40 uppercase tracking-widest block mb-3">Preajustes Rápidos</span>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    <button onclick="setPreset(12.5, 45, 3.2)" class="px-3 py-2 bg-surface-dim rounded-lg text-[10px] font-mono text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all border border-outline-variant/10 hover:border-primary/30">
+                        VT
+                    </button>
+                    <button onclick="setPreset(8.3, 23, 1.9)" class="px-3 py-2 bg-surface-dim rounded-lg text-[10px] font-mono text-on-surface-variant hover:bg-secondary/10 hover:text-secondary transition-all border border-outline-variant/10 hover:border-secondary/30">
+                        VD
+                    </button>
+                    <button onclick="setPreset(6.2, 12, 0.9)" class="px-3 py-2 bg-surface-dim rounded-lg text-[10px] font-mono text-on-surface-variant hover:bg-tertiary/10 hover:text-tertiary transition-all border border-outline-variant/10 hover:border-tertiary/30">
+                        LP
+                    </button>
+                    <button onclick="setPreset(10.4, 31, 2.4)" class="px-3 py-2 bg-surface-dim rounded-lg text-[10px] font-mono text-on-surface-variant hover:bg-error/10 hover:text-error transition-all border border-outline-variant/10 hover:border-error/30">
+                        LH
+                    </button>
+                    <button onclick="setPreset(4.8, 18, 1.1)" class="px-3 py-2 bg-surface-dim rounded-lg text-[10px] font-mono text-on-surface-variant hover:bg-primary-container/20 hover:text-primary transition-all border border-outline-variant/10 hover:border-primary/30 sm:col-span-1 col-span-2">
+                        TD
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="runPrediction()" id="predict-btn"
+                class="w-full mt-6 bg-primary-container text-on-primary font-display font-semibold py-4 rounded-lg hover:shadow-[0_0_40px_rgba(255,87,34,0.25)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 group">
+                <span class="material-symbols-outlined group-hover:animate-spin">refresh</span>
+                <span id="predict-btn-text">Ejecutar Clasificación</span>
+            </button>
+        </div>
+
+        <!-- Panel de Resultados -->
+        <div class="lg:col-span-3 space-y-6">
+
+            <!-- Tarjeta de Resultado Principal -->
+            <div id="result-card" class="bg-surface-container rounded-xl border border-outline-variant/20 p-6 min-h-[200px] flex flex-col items-center justify-center relative overflow-hidden">
+
+                <!-- Estado Vacío -->
+                <div id="result-empty" class="text-center">
+                    <div class="w-16 h-16 bg-surface-dim rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="material-symbols-outlined text-3xl text-on-surface-variant/30">analytics</span>
+                    </div>
+                    <p class="text-sm text-on-surface-variant/40">Ingresa los parámetros y ejecuta la clasificación</p>
+                </div>
+
+                <!-- Contenido del Resultado (oculto) -->
+                <div id="result-content" class="hidden w-full">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <span class="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-widest block mb-1">Resultado de Clasificación</span>
+                            <h3 id="result-tipo" class="font-display font-bold text-3xl text-primary">--</h3>
+                        </div>
+                        <div id="result-icon" class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span id="result-icon-symbol" class="material-symbols-outlined text-2xl text-primary">campaign</span>
+                        </div>
+                    </div>
+
+                    <div id="result-interpretacion" class="mb-5 p-4 rounded-xl bg-surface-dim border border-outline-variant/10 text-sm text-on-surface-variant leading-relaxed">
+                        La interpretación aparecerá aquí después de ejecutar la clasificación.
+                    </div>
+
+                    <div class="mb-5 rounded-2xl border border-outline-variant/10 bg-[#120d0b] overflow-hidden">
+                        <div class="relative h-48 sm:h-56 flex items-end justify-center">
+                            <div class="absolute inset-0 opacity-30" style="background-image: linear-gradient(#2a1f1c 1px, transparent 1px), linear-gradient(90deg, #2a1f1c 1px, transparent 1px); background-size: 24px 24px;"></div>
+                            <div class="absolute bottom-0 w-52 h-24 rounded-t-full bg-[#241410] volcano-shadow"></div>
+                            <div class="absolute bottom-12 w-36 h-16 bg-[#3a211c] volcano-cone"></div>
+                            <div class="absolute bottom-18 w-16 h-5 bg-[#ff6b35] rounded-b-full lava-pulse opacity-0" id="lava-glow"></div>
+                            <div id="lava-stream" class="absolute bottom-24 w-2 h-0 bg-gradient-to-b from-[#ffb347] via-[#ff6b35] to-[#ff3d00] rounded-full"></div>
+                            <div class="absolute bottom-28 w-20 h-10 overflow-hidden">
+                                <div id="eruption-smoke" class="absolute left-1/2 bottom-0 w-20 h-20 -translate-x-1/2 rounded-full border border-[#ffb5a0]/20 eruption-smoke"></div>
+                            </div>
+                        </div>
+                        <div class="px-4 py-3 border-t border-outline-variant/10 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/50">
+                            <span>Volcán interactivo</span>
+                            <span id="eruption-label">Sin erupción</span>
+                        </div>
+                    </div>
+
+                    <!-- Barras de Probabilidad -->
+                    <div id="prob-bars" class="space-y-3">
+                        <!-- Se llena dinámicamente -->
+                    </div>
+                </div>
+
+                <!-- Overlay de Procesamiento -->
+                <div id="result-processing" class="hidden absolute inset-0 bg-surface/90 backdrop-blur-sm flex items-center justify-center">
+                    <div class="flex flex-col items-center gap-3">
+                        <div class="relative w-10 h-10">
+                            <div class="absolute inset-0 border-2 border-outline-variant/30 rounded-full"></div>
+                            <div class="absolute inset-0 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                        <span class="text-xs font-mono text-on-surface-variant animate-pulse">Procesando...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medidor de Probabilidad -->
+            <div class="bg-surface-container rounded-xl border border-outline-variant/20 p-6">
+                <h4 class="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-widest mb-4">Distribución de Confianza</h4>
+                <div id="confidence-chart" class="space-y-3">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Predicciones Recientes -->
+            <div class="bg-surface-container rounded-xl border border-outline-variant/20 overflow-hidden">
+                <div class="px-6 py-4 border-b border-outline-variant/10 flex items-center justify-between">
+                    <h4 class="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-widest">Predicciones Recientes</h4>
+                    <button onclick="clearHistory()" class="text-[10px] font-mono text-on-surface-variant/40 hover:text-error transition-colors">Limpiar</button>
+                </div>
+                <div id="prediction-history" class="max-h-48 overflow-y-auto">
+                    <div class="px-6 py-8 text-center text-sm text-on-surface-variant/30">Aún no hay predicciones</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

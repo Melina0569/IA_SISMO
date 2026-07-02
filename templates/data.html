@@ -1,0 +1,175 @@
+<div class="data-view space-y-6 max-w-4xl mx-auto">
+    
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="font-display font-semibold text-2xl text-on-surface">Ingesta de Datos</h2>
+            <p class="text-sm text-on-surface-variant/60 mt-1">Sube conjuntos de datos sísmicos y entrena tu modelo de clasificación</p>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-high rounded-lg border border-outline-variant/20">
+            <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+            <span class="text-[10px] font-mono text-secondary uppercase tracking-wider">Sistema Listo</span>
+        </div>
+    </div>
+    
+    <!-- Zona de Subida -->
+    <div class="bg-surface-container rounded-xl border border-outline-variant/20 p-1">
+        <div id="drop-zone" 
+            class="relative rounded-lg border-2 border-dashed border-outline-variant/30 hover:border-primary/50 transition-all duration-500 p-12 text-center group cursor-pointer"
+            ondragover="handleDragOver(event)" 
+            ondragleave="handleDragLeave(event)" 
+            ondrop="handleDrop(event)"
+            onclick="document.getElementById('file-input').click()">
+            
+            <input type="file" id="file-input" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileSelect(event)">
+            
+            <!-- Animación del Icono de Subida -->
+            <div class="relative w-20 h-20 mx-auto mb-6">
+                <div class="absolute inset-0 bg-primary/5 rounded-full animate-ping opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div class="absolute inset-2 bg-primary/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                    <span class="material-symbols-outlined text-4xl text-primary">cloud_upload</span>
+                </div>
+            </div>
+            
+            <h3 class="font-display font-semibold text-lg text-on-surface mb-2">Arrastra tu dataset aquí</h3>
+            <p class="text-sm text-on-surface-variant/60 mb-4">o haz clic para buscar archivos</p>
+            
+            <div class="flex items-center justify-center gap-3">
+                <span class="px-3 py-1 bg-surface-dim rounded text-[10px] font-mono text-on-surface-variant/50 border border-outline-variant/20">.XLSX</span>
+                <span class="px-3 py-1 bg-surface-dim rounded text-[10px] font-mono text-on-surface-variant/50 border border-outline-variant/20">.CSV</span>
+                <span class="px-3 py-1 bg-surface-dim rounded text-[10px] font-mono text-on-surface-variant/50 border border-outline-variant/20">.XLS</span>
+            </div>
+            
+            <!-- Progreso de Subida (oculto por defecto) -->
+            <div id="upload-progress" class="hidden mt-6 max-w-md mx-auto">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-mono text-on-surface-variant">Subiendo...</span>
+                    <span id="upload-percent" class="text-xs font-mono text-primary">0%</span>
+                </div>
+                <div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+                    <div id="upload-bar" class="h-full bg-primary rounded-full transition-all duration-300 w-0"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tarjeta de Info del Archivo (oculta hasta subir) -->
+    <div id="file-info" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 p-6">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary">description</span>
+                </div>
+                <div>
+                    <h4 id="file-name" class="font-display font-semibold text-on-surface">--</h4>
+                    <p id="file-size" class="text-xs font-mono text-on-surface-variant/60">--</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="file-status" class="px-3 py-1 rounded-full text-[10px] font-mono uppercase tracking-wider bg-secondary/10 text-secondary border border-secondary/20">Listo</span>
+                <button type="button" onclick="clearDatasetData()" class="px-3 py-1 rounded-full text-[10px] font-mono uppercase tracking-wider bg-error/10 text-error border border-error/20 hover:bg-error/20 transition-colors">
+                    Limpiar data
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sección de Entrenamiento -->
+    <div class="bg-surface-container rounded-xl border border-outline-variant/20 p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h3 class="font-display font-semibold text-lg text-on-surface">Entrenamiento del Modelo</h3>
+                <p class="text-sm text-on-surface-variant/60 mt-1">Entrena el clasificador MLP con el dataset subido</p>
+            </div>
+            <span class="material-symbols-outlined text-tertiary">model_training</span>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-surface-dim rounded-lg p-4 border border-outline-variant/10">
+                <span class="text-[10px] font-mono text-on-surface-variant/40 uppercase tracking-widest block mb-1">Algoritmo</span>
+                <span class="text-sm font-mono text-on-surface">MLPClassifier</span>
+            </div>
+            <div class="bg-surface-dim rounded-lg p-4 border border-outline-variant/10">
+                <span class="text-[10px] font-mono text-on-surface-variant/40 uppercase tracking-widest block mb-1">Capas Ocultas</span>
+                <span class="text-sm font-mono text-on-surface">(10,)</span>
+            </div>
+            <div class="bg-surface-dim rounded-lg p-4 border border-outline-variant/10">
+                <span class="text-[10px] font-mono text-on-surface-variant/40 uppercase tracking-widest block mb-1">Iteraciones Máx</span>
+                <span class="text-sm font-mono text-on-surface">1000</span>
+            </div>
+        </div>
+        
+        <button onclick="entrenarModelo()" id="train-btn"
+            class="w-full bg-secondary-container text-on-secondary font-display font-semibold py-4 rounded-lg hover:shadow-[0_0_30px_rgba(112,216,200,0.15)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined group-hover:rotate-180 transition-transform duration-500">psychology</span>
+            <span id="train-btn-text">Entrenar Modelo</span>
+        </button>
+        
+        <!-- Progreso de Entrenamiento -->
+        <div id="train-progress" class="hidden mt-6">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-mono text-on-surface-variant">Entrenando...</span>
+                <span id="train-percent" class="text-xs font-mono text-secondary">0%</span>
+            </div>
+            <div class="w-full bg-surface-container-highest rounded-full h-2 overflow-hidden">
+                <div id="train-bar" class="h-full bg-secondary rounded-full transition-all duration-300 w-0 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-white/20 animate-[shimmer_1s_infinite]"></div>
+                </div>
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+                <div class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></div>
+                <span id="train-status" class="text-[10px] font-mono text-on-surface-variant/60">Inicializando...</span>
+            </div>
+        </div>
+        
+        <!-- Resultado del Entrenamiento -->
+        <div id="train-result" class="hidden mt-6 p-5 bg-surface-dim rounded-lg border border-secondary/20">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-secondary/20 rounded-full flex items-center justify-center">
+                        <span class="material-symbols-outlined text-secondary">check_circle</span>
+                    </div>
+                    <div>
+                        <span class="text-sm font-display font-semibold text-on-surface">Entrenamiento Completado</span>
+                        <p class="text-[10px] font-mono text-on-surface-variant/60">Modelo guardado en /modelo/</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-2xl font-display font-bold text-secondary" id="accuracy-value">--</span>
+                    <span class="text-sm text-secondary font-mono">%</span>
+                    <p class="text-[10px] font-mono text-on-surface-variant/40 uppercase">Precisión</p>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-secondary/10 text-sm text-on-surface-variant/70">
+                <span class="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/40 block mb-1">Interpretación</span>
+                <p id="accuracy-interpretation">--</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Vista Previa de Datos (oculta hasta subir) -->
+    <div id="data-preview" class="hidden bg-surface-container rounded-xl border border-outline-variant/20 overflow-hidden">
+        <div class="px-6 py-4 border-b border-outline-variant/10 flex items-center justify-between">
+            <h3 class="font-display font-semibold text-on-surface">Vista Previa de Datos</h3>
+            <div class="flex items-center gap-3 text-[10px] font-mono text-on-surface-variant/40">
+                <span id="preview-row-count">0 filas</span>
+                <span>•</span>
+                <span id="preview-col-count">0 columnas</span>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left min-w-max">
+                <thead id="preview-table-head" class="bg-surface-dim border-b border-outline-variant/10">
+                    <tr>
+                        <th class="px-6 py-3 text-[10px] font-mono text-on-surface-variant/50 uppercase tracking-widest">Sin datos</th>
+                    </tr>
+                </thead>
+                <tbody id="preview-table-body" class="font-mono text-xs">
+                    <tr>
+                        <td class="px-6 py-6 text-center text-on-surface-variant/40">Sube un archivo para ver la vista previa real</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
