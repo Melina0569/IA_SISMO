@@ -94,7 +94,7 @@ def entrenar():
     print(f"PETICIÓN /entrenar recibida")
     print(f"{'='*60}")
 
-    # ========== VALIDACIÓN CRÍTICA DEL JSON ==========
+    # VALIDACIÓN CRÍTICA DEL JSON
     data = request.get_json()
     if not data or not isinstance(data, dict):
         print("ERROR: No se recibió JSON válido")
@@ -123,7 +123,6 @@ def entrenar():
     try:
         resultado, modelo, scaler, encoder = entrenar_modelo(ruta)
         
-        # Asegurar que accuracy existe
         if "accuracy" not in resultado:
             resultado["accuracy"] = 0
             
@@ -153,7 +152,7 @@ def predecir():
         except:
             return jsonify({"error": "Modelo no entrenado. Entrena primero."}), 400
 
-    # ========== VALIDACIÓN CRÍTICA DEL JSON ==========
+    # VALIDACIÓN CRÍTICA DEL JSON
     data = request.get_json()
     if not data or not isinstance(data, dict):
         return jsonify({
