@@ -13,6 +13,82 @@ const LAST_PREDICTION_KEY = 'lastPredictionResult';
 const LAST_ACCURACY_KEY = 'lastTrainingAccuracy';
 
 // =====================================================
+// PERFILES SÍSMICOS PARA PREDICCIÓN POR REGLAS
+// =====================================================
+const PERFILES_SISMICOS = {
+    VT: {
+        freq: [3.0, 15.0],
+        dur: [0.5, 30.0],
+        eng: [100.0, 10000.0],
+        nombre: "Evento Volcano-Tectónico (VT)",
+        desc: "Fracturamiento de roca sólida por presión magmática o ajustes estructurales del volcán.",
+        causa: "El magma empuja contra la roca circundante, generando esfuerzos que superan la resistencia del material. Es el evento más común en volcanes activos.",
+        implicacion: "Indica actividad magmática activa cerca de la superficie. Si aumenta en frecuencia, puede preceder a una erupción.",
+        caracteristicas: {
+            frecuencia: "Alta (> 3 Hz). La ruptura de roca dura genera ondas de alta frecuencia.",
+            duracion: "Corta (segundos a minutos). El fracturamiento es un evento rápido e instantáneo.",
+            energia: "Alta a muy alta. La liberación de energía acumulada en la roca es explosiva."
+        }
+    },
+    VD: {
+        freq: [2.0, 5.0],
+        dur: [1.0, 45.0],
+        eng: [50.0, 5000.0],
+        nombre: "Evento Volcano-Tectónico Profundo (VD)",
+        desc: "Fracturamiento de roca a profundidades mayores (> 5 km), generalmente relacionado con el ascenso de magma desde cámaras profundas.",
+        causa: "Movimiento del magma en conductos profundos o colapso de cámaras magmáticas profundas. La señal se atenúa al llegar a la superficie.",
+        implicacion: "Sugiere recarga magmática desde profundidad. Es un indicador temprano de que el sistema volcánico está recibiendo magma nuevo.",
+        caracteristicas: {
+            frecuencia: "Media-alta (2-5 Hz). La atenuación de la trayectoria larga reduce ligeramente la frecuencia respecto a VT superficial.",
+            duracion: "Corta a media. Similar a VT pero con ligero alargamiento por reverberación en trayectos profundos.",
+            energia: "Moderada a alta. Aunque la fuente es potente, la distancia atenúa la energía registrada en superficie."
+        }
+    },
+    LP: {
+        freq: [0.1, 2.0],
+        dur: [30.0, 300.0],
+        eng: [10.0, 1000.0],
+        nombre: "Sismo de Largo Período (LP)",
+        desc: "Resonancia de fluidos volcánicos (magmáticos o hidrotermales) dentro de conductos o cavidades del volcán.",
+        causa: "El movimiento de gases o líquidos a través de estrechamientos en chimeneas volcánicas genera una resonancia tipo 'tubo de órgano'. La fuente no es fractura de roca, sino oscilación de fluidos.",
+        implicacion: "Indica presencia de fluidos magmáticos o hidrotermales en movimiento. Es precursor clásico de actividad eruptiva.",
+        caracteristicas: {
+            frecuencia: "Baja (< 2 Hz). Los fluidos pesados y las cavidades grandes generan oscilaciones lentas.",
+            duracion: "Larga (minutos a horas). La resonancia de fluidos es un proceso sostenido en el tiempo.",
+            energia: "Moderada. La energía se libera de forma continua y sostenida, no explosiva."
+        }
+    },
+    LH: {
+        freq: [1.0, 5.0],
+        dur: [10.0, 120.0],
+        eng: [20.0, 2000.0],
+        nombre: "Evento Híbrido (LH)",
+        desc: "Señal mixta que combina una fase inicial de baja frecuencia (LP) seguida de una fase de alta frecuencia (VT).",
+        causa: "Inicia con el movimiento de fluidos que genera una resonancia (fase LP), seguido de la ruptura de la roca circundante por la presión ejercida por esos mismos fluidos (fase VT).",
+        implicacion: "Es una señal de transición crítica: los fluidos están interactuando activamente con la roca circundante. Puede indicar desgasificación intensa o apertura de nuevas chimeneas.",
+        caracteristicas: {
+            frecuencia: "Variable (baja al inicio, alta al final). La mezcla de ambas fases produce un espectro ancho.",
+            duracion: "Variable a larga. Dura más que un VT puro porque incluye la fase de resonancia inicial.",
+            energia: "Moderada a alta. Acumula energía tanto de la resonancia fluida como del fracturamiento final."
+        }
+    },
+    TD: {
+        freq: [0.1, 1.0],
+        dur: [60.0, 1000.0],
+        eng: [5.0, 500.0],
+        nombre: "Tremor de Degasificación (TD)",
+        desc: "Señal sísmica continua de muy baja frecuencia generada por la liberación sostenida de gases volcánicos.",
+        causa: "Flujo turbulento de gases magmáticos (principalmente H₂O, CO₂, SO₂) a través de conductos volcánicos. A diferencia del LP, no hay una resonancia definida, sino un tremor continuo.",
+        implicacion: "Indica desgasificación activa del magma. Si se intensifica, puede preceder a erupciones efusivas o explosivas con alto contenido de gases.",
+        caracteristicas: {
+            frecuencia: "Muy baja (< 1 Hz). El flujo de gases es un proceso lento y continuo.",
+            duracion: "Muy larga (horas a días). La degasificación es un proceso persistente.",
+            energia: "Baja a moderada sostenida. No hay picos de energía, sino una liberación constante en el tiempo."
+        }
+    }
+};
+
+// =====================================================
 // FUNCIONES DE INGESTA DE DATOS
 // =====================================================
 function normalizeEventType(type) {
@@ -78,14 +154,12 @@ function uploadFile(file) {
     const formData = new FormData();
     formData.append('archivo', file);
 
-    // Mostrar progreso
     const progressEl = document.getElementById('upload-progress');
     const barEl = document.getElementById('upload-bar');
     const percentEl = document.getElementById('upload-percent');
 
     progressEl.classList.remove('hidden');
 
-    // Simular progreso
     let progress = 0;
     const interval = setInterval(() => {
         progress += Math.random() * 15;
@@ -115,7 +189,6 @@ function uploadFile(file) {
             throw new Error('El servidor no devolvió una ruta válida');
         }
 
-        // Mostrar info del archivo
         setTimeout(() => {
             renderDatasetSummary(data.info || null, file);
             renderDataPreview(data.info || null);
@@ -391,14 +464,12 @@ function entrenarModelo() {
         clearInterval(interval);
         const text = await r.text();
         
-        // Si la respuesta NO es JSON, mostrar el HTML/texto crudo para diagnosticar
         const contentType = r.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
             console.error('RESPUESTA DEL SERVIDOR (NO JSON):', text.substring(0, 500));
             throw new Error(`El servidor devolvió ${r.status} ${r.statusText} (HTML/Texto). Revisa los logs de Render.`);
         }
 
-        // Intentar parsear JSON
         try {
             return JSON.parse(text);
         } catch (e) {
@@ -434,7 +505,6 @@ function entrenarModelo() {
         progressEl.classList.add('hidden');
         statusEl.textContent = 'Error';
         
-        // Mostrar mensaje más descriptivo
         Animations.showToast('Error en entrenamiento: ' + err.message, 'error');
         console.error('Error completo:', err);
     });
@@ -460,7 +530,6 @@ function showTrainingResult(accuracy) {
         resultEl.style.transform = 'scale(1)';
     });
 
-    // Animar contador de precisión
     Animations.animateCounter(accuracyEl, accuracy, 1500);
 }
 
@@ -546,7 +615,7 @@ function renderResultsView() {
                                 <p class="text-[10px] font-mono text-on-surface-variant/50 uppercase tracking-widest">Modelo Neuronal Artificial</p>
                             </div>
                         </div>
-                        <p class="text-sm text-on-surface-variant leading-relaxed">${interpretacion}</p>
+                        <p class="text-sm text-on-surface-variant leading-relaxed whitespace-pre-line">${interpretacion}</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -627,7 +696,171 @@ function updateTrainingWidget(accuracy) {
 }
 
 // =====================================================
-// FUNCIONES DE PREDICCIÓN
+// PREDICCIÓN POR REGLAS (SIN MODELO - PREDICCIÓN RÁPIDA)
+// =====================================================
+
+function predictFromDashboardRules() {
+    const frecuencia = parseFloat(document.getElementById('dash-frecuencia').value);
+    const duracion = parseFloat(document.getElementById('dash-duracion').value);
+    const energia = parseFloat(document.getElementById('dash-energia').value);
+
+    if (!frecuencia || !duracion || !energia) {
+        Animations.showToast('Completa todos los parámetros', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('dash-predict-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> Analizando...';
+
+    // Calcular puntuación para cada tipo
+    function calcularScore(tipo) {
+        const p = PERFILES_SISMICOS[tipo];
+        
+        // Distancia normalizada al centro de cada rango (0 = perfecto, 1 = límite)
+        const dFreq = Math.abs(frecuencia - (p.freq[0] + p.freq[1]) / 2) / ((p.freq[1] - p.freq[0]) / 2);
+        const dDur = Math.abs(duracion - (p.dur[0] + p.dur[1]) / 2) / ((p.dur[1] - p.dur[0]) / 2);
+        const dEng = Math.abs(energia - (p.eng[0] + p.eng[1]) / 2) / ((p.eng[1] - p.eng[0]) / 2);
+        
+        // Peso: frecuencia 40%, duración 30%, energía 30%
+        const score = Math.max(0, 1 - (dFreq * 0.4 + dDur * 0.3 + dEng * 0.3));
+        return score;
+    }
+
+    // Calcular para todos los tipos
+    const resultados = Object.keys(PERFILES_SISMICOS).map(tipo => ({
+        tipo,
+        score: calcularScore(tipo),
+        ...PERFILES_SISMICOS[tipo]
+    }));
+
+    // Ordenar por puntuación descendente
+    resultados.sort((a, b) => b.score - a.score);
+    
+    const ganador = resultados[0];
+    const segundo = resultados[1];
+    
+    // Normalizar scores a probabilidades
+    const totalScore = resultados.reduce((sum, r) => sum + r.score, 0);
+    const probabilidades = {};
+    resultados.forEach(r => {
+        probabilidades[r.tipo] = totalScore > 0 ? r.score / totalScore : 0.2;
+    });
+
+    const confianza = probabilidades[ganador.tipo] * 100;
+
+    // Determinar parámetro más determinante
+    const p = ganador;
+    const dFreq = Math.abs(frecuencia - (p.freq[0] + p.freq[1]) / 2) / ((p.freq[1] - p.freq[0]) / 2);
+    const dDur = Math.abs(duracion - (p.dur[0] + p.dur[1]) / 2) / ((p.dur[1] - p.dur[0]) / 2);
+    const dEng = Math.abs(energia - (p.eng[0] + p.eng[1]) / 2) / ((p.eng[1] - p.eng[0]) / 2);
+    
+    const determinantes = [
+        ["Frecuencia", frecuencia, "Hz", 1 - dFreq],
+        ["Duración", duracion, "s", 1 - dDur],
+        ["Energía", energia, "J", 1 - dEng]
+    ];
+    determinantes.sort((a, b) => b[3] - a[3]);
+    const [paramClave, valClave, unidad, tipicidad] = determinantes[0];
+
+    // Construir interpretación detallada
+    let interpretacion = `🌋 ${ganador.nombre}
+
+📊 ¿Por qué esta clasificación?
+Este evento se clasificó como ${ganador.tipo} porque sus parámetros de entrada se alinean fuertemente con el perfil típico de este tipo de evento sísmico.
+
+🔬 Análisis de parámetros ingresados:
+• Frecuencia: ${frecuencia.toFixed(2)} Hz → ${ganador.caracteristicas.frecuencia}
+• Duración: ${duracion.toFixed(2)} s → ${ganador.caracteristicas.duracion}
+• Energía: ${energia.toFixed(2)} J → ${ganador.caracteristicas.energia}
+
+🎯 Parámetro más determinante: ${paramClave.toUpperCase()} (${valClave.toFixed(2)} ${unidad})
+Este valor tiene un ${(tipicidad * 100).toFixed(0)}% de coincidencia con el perfil típico de ${ganador.tipo}, lo que fue clave para la clasificación.
+
+📖 Descripción:
+${ganador.desc}
+
+🔍 Causa física:
+${ganador.causa}
+
+⚠️ Implicación volcánica:
+${ganador.implicacion}`;
+
+    // Si hay ambigüedad significativa
+    if (segundo.score > 0.25) {
+        interpretacion += `\n\n⚡ Nota de ambigüedad: El modelo detectó una similitud del ${(segundo.score * 100).toFixed(1)}% con ${segundo.tipo} (${segundo.nombre}). Esto sugiere que el evento podría tener características mixtas o estar en una fase de transición entre ambos tipos.`;
+    }
+
+    // Mostrar resultado
+    mostrarResultadoDashboardRules({
+        tipo: ganador.tipo,
+        confianza: confianza,
+        probabilidades: probabilidades,
+        interpretacion: interpretacion,
+        parametros_entrada: { frecuencia, duracion, energia }
+    });
+
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined">auto_fix_high</span> Ejecutar Clasificación';
+}
+
+function mostrarResultadoDashboardRules(data) {
+    const resultEl = document.getElementById('dash-result');
+    const tipoEl = document.getElementById('dash-result-type');
+    const barEl = document.getElementById('dash-result-bar');
+    const probEl = document.getElementById('dash-result-prob');
+
+    resultEl.classList.remove('hidden');
+    resultEl.style.opacity = '0';
+    resultEl.style.transform = 'translateY(10px)';
+    resultEl.style.transition = 'all 0.4s ease';
+
+    requestAnimationFrame(() => {
+        resultEl.style.opacity = '1';
+        resultEl.style.transform = 'translateY(0)';
+    });
+
+    const colors = {
+        'VT': ['text-primary', 'bg-primary'],
+        'VD': ['text-secondary', 'bg-secondary'],
+        'LP': ['text-tertiary', 'bg-tertiary'],
+        'LH': ['text-error', 'bg-error'],
+        'TD': ['text-primary', 'bg-primary']
+    };
+
+    const [textColor, barColor] = colors[data.tipo] || colors['VT'];
+
+    tipoEl.textContent = data.tipo;
+    tipoEl.className = 'text-sm font-bold font-display ' + textColor;
+
+    barEl.className = 'h-full rounded-full transition-all duration-1000 ' + barColor;
+    barEl.style.width = '0%';
+
+    setTimeout(() => {
+        barEl.style.width = data.confianza + '%';
+    }, 100);
+
+    probEl.textContent = data.confianza.toFixed(1) + '% de confianza';
+
+    // Guardar para la vista de Resultados
+    const payload = {
+        tipo: data.tipo,
+        interpretacion: data.interpretacion,
+        probabilidades: data.probabilidades,
+        frecuencia: data.parametros_entrada.frecuencia,
+        duracion: data.parametros_entrada.duracion,
+        energia: data.parametros_entrada.energia,
+        confianza: data.confianza / 100,
+        fecha: new Date().toISOString(),
+        metodo: 'reglas'  // Indica que fue por reglas, no por modelo
+    };
+    localStorage.setItem(LAST_PREDICTION_KEY, JSON.stringify(payload));
+
+    Animations.showToast(`Clasificado como: ${data.tipo} (por reglas)`, 'success');
+}
+
+// =====================================================
+// PREDICCIÓN CON MODELO ENTRENADO (PREDICCIÓN TAB)
 // =====================================================
 
 function updateParamDisplay(param, value, unit) {
@@ -710,15 +943,10 @@ function showPredictionResult(data) {
     const confidenceChartEl = document.getElementById('confidence-chart');
     const resultIcon = document.getElementById('result-icon');
     const resultIconSymbol = document.getElementById('result-icon-symbol');
-    const eruptionLabel = document.getElementById('eruption-label');
-    const lavaGlow = document.getElementById('lava-glow');
-    const lavaStream = document.getElementById('lava-stream');
-    const eruptionSmoke = document.getElementById('eruption-smoke');
 
     emptyEl.classList.add('hidden');
     contentEl.classList.remove('hidden');
 
-    // Animar resultado
     contentEl.style.opacity = '0';
     contentEl.style.transform = 'translateY(10px)';
     contentEl.style.transition = 'all 0.5s ease';
@@ -728,7 +956,6 @@ function showPredictionResult(data) {
         contentEl.style.transform = 'translateY(0)';
     });
 
-    // Establecer tipo de resultado con color
     const colors = {
         'VT': 'text-primary',
         'VD': 'text-secondary',
@@ -765,7 +992,6 @@ function showPredictionResult(data) {
         interpretacionEl.textContent = data.interpretacion || 'Sin interpretación disponible.';
     }
 
-    // Construir barras de probabilidad
     barsEl.innerHTML = '';
     if (confidenceChartEl) {
         confidenceChartEl.innerHTML = '';
@@ -806,7 +1032,7 @@ function showPredictionResult(data) {
 
     const chartOrder = ['VT', 'VD', 'LP', 'LH', 'TD'];
 
-    chartOrder.forEach((clase, index) => {
+    chartOrder.forEach((clase) => {
         const prob = probs[clase] || 0;
         const classColors = {
             'VT': ['bg-primary', 'text-primary'],
@@ -830,44 +1056,12 @@ function showPredictionResult(data) {
         barsEl.insertAdjacentHTML('beforeend', barHtml);
     });
 
-    chartOrder.forEach((clase) => {
-        const prob = probs[clase] || 0;
-        if (!confidenceChartEl) return;
-
-        const [barColor, textColor] = {
-            'VT': ['bg-primary', 'text-primary'],
-            'VD': ['bg-secondary', 'text-secondary'],
-            'LP': ['bg-tertiary', 'text-tertiary'],
-            'LH': ['bg-error', 'text-error'],
-            'TD': ['bg-primary', 'text-primary'],
-            'TO': ['bg-primary', 'text-primary']
-        }[clase] || ['bg-surface-variant', 'text-on-surface-variant'];
-
-        confidenceChartEl.insertAdjacentHTML('beforeend', `
-            <div class="grid grid-cols-[44px_1fr_56px] gap-3 items-center">
-                <span class="text-[10px] font-mono ${textColor} uppercase tracking-widest">${clase}</span>
-                <div class="bg-surface-dim rounded-full h-2 overflow-hidden border border-outline-variant/10">
-                    <div class="${barColor} h-full rounded-full transition-all duration-1000" style="width: 0%" data-chart-width="${(prob * 100).toFixed(1)}%"></div>
-                </div>
-                <span class="text-[10px] font-mono text-on-surface-variant text-right">${(prob * 100).toFixed(1)}%</span>
-            </div>
-        `);
-    });
-
-    // Animar barras
     setTimeout(() => {
         barsEl.querySelectorAll('[data-width]').forEach(bar => {
             bar.style.width = bar.dataset.width;
         });
-
-        if (confidenceChartEl) {
-            confidenceChartEl.querySelectorAll('[data-chart-width]').forEach(bar => {
-                bar.style.width = bar.dataset.chartWidth;
-            });
-        }
     }, 100);
 
-    // Actualizar volcán
     updateVolcanoAnimation(data.tipo, probs);
 }
 
@@ -900,7 +1094,6 @@ function updateVolcanoAnimation(tipo, probs) {
         eruptionLabel.textContent = `${tipo} • ${intensity}%`;
     }
 }
-
 
 function saveLastPrediction(data, frecuencia, duracion, energia) {
     const confidence = Math.max(...Object.values(data.probabilidades || { [data.tipo]: 0 }));
@@ -1016,83 +1209,6 @@ function clearHistory() {
     predictionHistory = [];
     updateHistoryDisplay();
     Animations.showToast('Historial limpiado', 'info');
-}
-
-// =====================================================
-// PREDICCIÓN RÁPIDA DESDE EL PANEL PRINCIPAL
-// =====================================================
-
-function predictFromDashboard() {
-    const frecuencia = parseFloat(document.getElementById('dash-frecuencia').value);
-    const duracion = parseFloat(document.getElementById('dash-duracion').value);
-    const energia = parseFloat(document.getElementById('dash-energia').value);
-
-    if (!frecuencia || !duracion || !energia) {
-        Animations.showToast('Completa todos los parámetros', 'warning');
-        return;
-    }
-
-    const btn = document.getElementById('dash-predict-btn');
-    const resultEl = document.getElementById('dash-result');
-
-    btn.disabled = true;
-    btn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> Procesando...';
-
-    fetch('/predecir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ frecuencia, duracion, energia })
-    })
-    .then(r => r.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = '<span class="material-symbols-outlined">auto_fix_high</span> Ejecutar Clasificación';
-
-        // Mostrar resultado
-        resultEl.classList.remove('hidden');
-        resultEl.style.opacity = '0';
-        resultEl.style.transform = 'translateY(10px)';
-        resultEl.style.transition = 'all 0.4s ease';
-
-        requestAnimationFrame(() => {
-            resultEl.style.opacity = '1';
-            resultEl.style.transform = 'translateY(0)';
-        });
-
-        const tipoEl = document.getElementById('dash-result-type');
-        const barEl = document.getElementById('dash-result-bar');
-        const probEl = document.getElementById('dash-result-prob');
-
-        const colors = {
-            'VT': ['text-primary', 'bg-primary'],
-            'VD': ['text-secondary', 'bg-secondary'],
-            'LP': ['text-tertiary', 'bg-tertiary'],
-            'LH': ['text-error', 'bg-error'],
-            'TO': ['text-primary', 'bg-primary']
-        };
-
-        const [textColor, barColor] = colors[data.tipo] || colors['VT'];
-
-        tipoEl.textContent = data.tipo;
-        tipoEl.className = 'text-sm font-bold font-display ' + textColor;
-
-        const maxProb = Math.max(...Object.values(data.probabilidades || {}));
-        barEl.className = 'h-full rounded-full transition-all duration-1000 ' + barColor;
-        barEl.style.width = '0%';
-
-        setTimeout(() => {
-            barEl.style.width = (maxProb * 100) + '%';
-        }, 100);
-
-        probEl.textContent = (maxProb * 100).toFixed(1) + '% de confianza';
-
-        Animations.showToast(`Clasificado como: ${data.tipo}`, 'success');
-    })
-    .catch(err => {
-        btn.disabled = false;
-        btn.innerHTML = '<span class="material-symbols-outlined">auto_fix_high</span> Ejecutar Clasificación';
-        Animations.showToast('Error en predicción: ' + err.message, 'error');
-    });
 }
 
 // =====================================================
