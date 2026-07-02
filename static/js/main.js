@@ -374,10 +374,8 @@ function entrenarModelo() {
     const interval = setInterval(() => {
         progress += Math.random() * 8 + 2;
         if (progress > 95) progress = 95;
-
         barEl.style.width = progress + '%';
         percentEl.textContent = Math.floor(progress) + '%';
-
         if (progress > (statusIndex + 1) * 16 && statusIndex < statuses.length - 1) {
             statusIndex++;
             statusEl.textContent = statuses[statusIndex];
@@ -389,12 +387,33 @@ function entrenarModelo() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ruta: uploadedFilePath })
     })
-    .then(r => r.json())
-    .then(data => {
+    .then(async r => {
         clearInterval(interval);
+        const text = await r.text();
+        
+        // Si la respuesta NO es JSON, mostrar el HTML/texto crudo para diagnosticar
+        const contentType = r.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            console.error('RESPUESTA DEL SERVIDOR (NO JSON):', text.substring(0, 500));
+            throw new Error(`El servidor devolvió ${r.status} ${r.statusText} (HTML/Texto). Revisa los logs de Render.`);
+        }
+
+        // Intentar parsear JSON
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('TEXTO RECIBIDO:', text.substring(0, 500));
+            throw new Error('El servidor respondió con texto que no es JSON válido');
+        }
+    })
+    .then(data => {
         barEl.style.width = '100%';
         percentEl.textContent = '100%';
         statusEl.textContent = '¡Completado!';
+
+        if (data.error) {
+            throw new Error(data.error);
+        }
 
         setTimeout(() => {
             showTrainingResult(data.accuracy);
@@ -410,11 +429,14 @@ function entrenarModelo() {
         }, 500);
     })
     .catch(err => {
-        clearInterval(interval);
         btn.disabled = false;
         btnText.textContent = 'Entrenar Modelo';
         progressEl.classList.add('hidden');
+        statusEl.textContent = 'Error';
+        
+        // Mostrar mensaje más descriptivo
         Animations.showToast('Error en entrenamiento: ' + err.message, 'error');
+        console.error('Error completo:', err);
     });
 }
 
