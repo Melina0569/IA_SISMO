@@ -3,13 +3,12 @@ import joblib
 import numpy as np
 from pathlib import Path
 import warnings
-import traceback
 warnings.filterwarnings('ignore')
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score
 
 
 INTERPRETACIONES = {
@@ -22,180 +21,204 @@ INTERPRETACIONES = {
 }
 
 
-def log_to_file(msg):
-    with open("error_log.txt", "a", encoding="utf-8") as f:
-        f.write(f"{msg}\n")
-
-
-def balancear_dataset(df, max_por_clase=500):
-    log_to_file(f"\n{'='*60}")
-    log_to_file("BALANCEANDO DATASET")
-    log_to_file(f"{'='*60}")
-    log_to_file(f"Antes del balanceo:")
-    log_to_file(str(df['TIPO'].value_counts()))
-    
-    dfs_balanceados = []
-    
-    for tipo in df['TIPO'].unique():
-        df_tipo = df[df['TIPO'] == tipo]
-        original_count = len(df_tipo)
-        
-        if len(df_tipo) > max_por_clase:
-            df_tipo = df_tipo.sample(n=max_por_clase, random_state=42)
-            log_to_file(f"  {tipo}: {original_count} -> {max_por_clase} (submuestreo)")
-        else:
-            log_to_file(f"  {tipo}: {original_count} registros (sin cambios)")
-        
-        dfs_balanceados.append(df_tipo)
-    
-    df_balanceado = pd.concat(dfs_balanceados, ignore_index=True)
-    
-    log_to_file(f"\nDespués del balanceo:")
-    log_to_file(str(df_balanceado['TIPO'].value_counts()))
-    log_to_file(f"Total: {len(df_balanceado)} registros")
-    
-    return df_balanceado
-
-
 def entrenar_modelo(ruta):
-    log_to_file(f"\n{'='*60}")
-    log_to_file("INICIANDO ENTRENAMIENTO")
-    log_to_file(f"Archivo: {ruta}")
-    log_to_file(f"{'='*60}")
+    """Entrena el modelo MLP con manejo completo de errores."""
+    
+    print(f"\n{'='*60}")
+    print(f"ENTRENAMIENTO INICIADO")
+    print(f"Archivo: {ruta}")
+    print(f"{'='*60}")
     
     try:
-        # CARGAR DATOS
+        # ========== 1. CARGAR DATOS ==========
+        if not Path(ruta).exists():
+            raise FileNotFoundError(f"Archivo no encontrado: {ruta}")
+        
         ext = Path(ruta).suffix.lower()
-        log_to_file(f"Extensión: {ext}")
+        print(f"Extensión detectada: {ext}")
         
         if ext == ".csv":
             df = pd.read_csv(ruta)
-        else:
+        elif ext in (".xlsx", ".xls"):
             df = pd.read_excel(ruta)
+        else:
+            raise ValueError(f"Formato no soportado: {ext}")
         
-        log_to_file(f"Registros cargados: {len(df)}")
-        log_to_file(f"Columnas: {list(df.columns)}")
+        print(f"Registros cargados: {len(df)}")
+        print(f"Columnas: {list(df.columns)}")
         
-        # LIMPIEZA
+        # ========== 2. LIMPIEZA ==========
+        # Eliminar filas con valores faltantes
         df_before = len(df)
         df = df.dropna()
-        log_to_file(f"Después de dropna: {len(df)} (eliminados: {df_before - len(df)})")
+        print(f"Después de dropna: {len(df)} (eliminados: {df_before - len(df)})")
         
         if len(df) == 0:
             raise ValueError("El dataset quedó vacío después de eliminar nulos")
         
-        # DETECTAR COLUMNAS
-        cols = {c.strip().upper(): c for c in df.columns}
-        log_to_file(f"Columnas normalizadas: {list(cols.keys())}")
+        # ========== 3. VALIDAR COLUMNAS ==========
+        # Buscar columnas similares (por si hay espacios, mayúsculas, etc.)
+        columnas_originales = list(df.columns)
+        columnas_lower = [c.strip().upper() for c in columnas_originales]
         
-        freq_col = next((cols[k] for k in cols if 'FREC' in k or 'FREQ' in k), None)
-        dur_col = next((cols[k] for k in cols if 'DUR' in k), None)
-        eng_col = next((cols[k] for k in cols if 'ENER' in k or 'ENG' in k), None)
-        tipo_col = next((cols[k] for k in cols if 'TIPO' in k or 'TYPE' in k or 'CLASE' in k), None)
+        # Mapear nombres estándar
+        col_map = {}
+        nombres_esperados = {
+            'FRECUENCIA_PRINCIPAL': ['FRECUENCIA_PRINCIPAL', 'FRECUENCIA', 'FREQ', 'FREQUENCY'],
+            'DURACION': ['DURACION', 'DURACIÓN', 'DURATION', 'DUR'],
+            'ENERGIA': ['ENERGIA', 'ENERGÍA', 'ENERGY', 'ENG'],
+            'TIPO': ['TIPO', 'TYPE', 'CLASE', 'CLASS', 'LABEL']
+        }
         
-        log_to_file(f"Mapeo: freq={freq_col}, dur={dur_col}, eng={eng_col}, tipo={tipo_col}")
+        for estandar, alternativas in nombres_esperados.items():
+            for alt in alternativas:
+                if alt in columnas_lower:
+                    idx = columnas_lower.index(alt)
+                    col_map[estandar] = columnas_originales[idx]
+                    break
         
-        if not all([freq_col, dur_col, eng_col, tipo_col]):
-            faltantes = []
-            if not freq_col: faltantes.append("FRECUENCIA")
-            if not dur_col: faltantes.append("DURACION")
-            if not eng_col: faltantes.append("ENERGIA")
-            if not tipo_col: faltantes.append("TIPO")
-            raise ValueError(f"Columnas faltantes: {faltantes}")
+        print(f"Mapeo de columnas: {col_map}")
         
-        df = df.rename(columns={
-            freq_col: 'FRECUENCIA_PRINCIPAL',
-            dur_col: 'DURACION',
-            eng_col: 'ENERGIA',
-            tipo_col: 'TIPO'
-        })
+        faltantes = [k for k in nombres_esperados.keys() if k not in col_map]
+        if faltantes:
+            raise ValueError(f"Columnas faltantes: {faltantes}. Columnas disponibles: {columnas_originales}")
         
-        # CONVERTIR TIPOS
+        # Renombrar columnas
+        df = df.rename(columns={v: k for k, v in col_map.items()})
+        
+        # ========== 4. CONVERTIR TIPOS ==========
+        # Asegurar que las columnas numéricas sean numéricas
         for col in ['FRECUENCIA_PRINCIPAL', 'DURACION', 'ENERGIA']:
             df[col] = pd.to_numeric(df[col], errors='coerce')
         
+        # La columna TIPO debe ser string
         df['TIPO'] = df['TIPO'].astype(str).str.strip().str.upper()
+        
+        # Eliminar filas donde la conversión falló
         df = df.dropna()
-        
-        log_to_file(f"Después de conversión: {len(df)} registros")
-        
-        # NORMALIZAR TIPOS
-        df['TIPO'] = df['TIPO'].replace({'TO': 'TD'})
-        
-        tipos_validos = {'VT', 'VD', 'LP', 'LH', 'TD'}
-        tipos_encontrados = set(df['TIPO'].unique())
-        log_to_file(f"Tipos encontrados: {tipos_encontrados}")
-        
-        df = df[df['TIPO'].isin(tipos_validos)]
+        print(f"Después de conversión numérica: {len(df)}")
         
         if len(df) == 0:
-            raise ValueError(f"No quedaron tipos válidos. Encontrados: {tipos_encontrados}")
+            raise ValueError("No quedaron datos válidos después de la conversión")
         
-        # BALANCEAR
-        df = balancear_dataset(df, max_por_clase=500)
+        # ========== 5. NORMALIZAR TIPOS ==========
+        # Mapear TO → TD si es necesario
+        df['TIPO'] = df['TIPO'].replace({'TO': 'TD'})
         
-        # PREPARAR DATOS
+        # Filtrar solo tipos conocidos
+        tipos_validos = {'VT', 'VD', 'LP', 'LH', 'TD'}
+        df = df[df['TIPO'].isin(tipos_validos)]
+        print(f"Después de filtrar tipos válidos: {len(df)}")
+        
+        if len(df) == 0:
+            raise ValueError(f"No quedaron tipos válidos. Tipos encontrados: {df['TIPO'].unique()}")
+        
+        # ========== 6. VERIFICAR DISTRIBUCIÓN ==========
+        distribucion = df['TIPO'].value_counts()
+        print(f"\nDistribución de clases:")
+        print(distribucion)
+        
+        # ========== 7. PREPARAR DATOS ==========
         X = df[["FRECUENCIA_PRINCIPAL", "DURACION", "ENERGIA"]].values
         y = df["TIPO"].values
         
-        log_to_file(f"Features shape: {X.shape}")
-        log_to_file(f"Clases: {np.unique(y)}")
+        clases_unicas = np.unique(y)
+        print(f"\nClases únicas: {clases_unicas}")
         
-        # DIVIDIR
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.25, random_state=42, stratify=y
-        )
+        if len(clases_unicas) < 2:
+            raise ValueError(f"Se necesitan al menos 2 clases. Encontradas: {clases_unicas}")
         
-        log_to_file(f"Train: {len(X_train)} | Test: {len(X_test)}")
+        # ========== 8. DIVIDIR DATOS ==========
+        # Asegurar que haya suficientes muestras para stratify
+        min_por_clase = distribucion.min()
+        print(f"Mínimo por clase: {min_por_clase}")
         
-        # PREPROCESAMIENTO
+        if min_por_clase < 2:
+            raise ValueError(f"Clase con muy pocas muestras: {min_por_clase}. Mínimo requerido: 2")
+        
+        # Ajustar test_size si hay pocas muestras
+        test_size = 0.25
+        if min_por_clase < 4:
+            test_size = 0.2
+            print(f"Ajustando test_size a {test_size} por pocas muestras")
+        
+        try:
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=test_size, random_state=42, stratify=y
+            )
+        except ValueError as e:
+            print(f"Error en train_test_split: {e}")
+            print("Intentando sin stratify...")
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=test_size, random_state=42
+            )
+        
+        print(f"\nTrain: {len(X_train)} | Test: {len(X_test)}")
+        
+        # ========== 9. PREPROCESAMIENTO ==========
         encoder = LabelEncoder()
         y_train_enc = encoder.fit_transform(y_train)
         y_test_enc = encoder.transform(y_test)
-        
-        log_to_file(f"Clases codificadas: {list(encoder.classes_)}")
+        print(f"Clases codificadas: {list(encoder.classes_)}")
         
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
         
-        # MODELO MLP
+        # ========== 10. MODELO MLP ==========
         n_samples = len(X_train)
-        hidden_layers = (128, 64, 32)
+        n_features = X_train.shape[1]
+        n_classes = len(clases_unicas)
         
-        log_to_file(f"Arquitectura: {hidden_layers}")
+        # Ajustar arquitectura según datos
+        if n_samples < 100:
+            hidden_layers = (32, 16)
+        elif n_samples < 1000:
+            hidden_layers = (64, 32, 16)
+        elif n_samples < 5000:
+            hidden_layers = (128, 64, 32)
+        else:
+            hidden_layers = (256, 128, 64, 32)
+        
+        batch_size = min(256, max(32, n_samples // 20))
+        
+        print(f"\nArquitectura: {hidden_layers}")
+        print(f"Batch size: {batch_size}")
+        print(f"Features: {n_features} | Clases: {n_classes}")
         
         modelo = MLPClassifier(
             hidden_layer_sizes=hidden_layers,
             activation='relu',
             solver='adam',
             alpha=0.001,
-            batch_size=32,
+            batch_size=batch_size,
             learning_rate='adaptive',
-            max_iter=3000,
+            max_iter=2000,
             early_stopping=True,
-            validation_fraction=0.15,
-            n_iter_no_change=50,
-            random_state=42
+            validation_fraction=0.1,
+            n_iter_no_change=30,
+            random_state=42,
+            verbose=False
         )
         
-        log_to_file("Entrenando modelo...")
+        print("\nEntrenando modelo...")
         modelo.fit(X_train_scaled, y_train_enc)
-        log_to_file(f"Entrenamiento completado en {modelo.n_iter_} iteraciones")
+        print(f"Entrenamiento completado en {modelo.n_iter_} iteraciones")
         
-        # EVALUAR
+        # ========== 11. EVALUAR ==========
         y_pred = modelo.predict(X_test_scaled)
         accuracy = accuracy_score(y_test_enc, y_pred)
         
-        log_to_file(f"Accuracy: {accuracy * 100:.2f}%")
+        print(f"\n{'='*60}")
+        print(f"RESULTADO: Accuracy = {accuracy * 100:.2f}%")
+        print(f"{'='*60}")
         
-        # GUARDAR
+        # ========== 12. GUARDAR ==========
         Path("modelo").mkdir(exist_ok=True)
         joblib.dump(modelo, "modelo/modelo.pkl")
         joblib.dump(scaler, "modelo/scaler.pkl")
         joblib.dump(encoder, "modelo/encoder.pkl")
-        
-        log_to_file("Modelo guardado")
+        print("Modelo guardado exitosamente")
         
         resultado = {
             "accuracy": round(accuracy * 100, 2),
@@ -203,25 +226,30 @@ def entrenar_modelo(ruta):
             "muestras_test": int(len(X_test)),
             "clases": list(encoder.classes_),
             "iteraciones": int(modelo.n_iter_),
-            "capas": str(hidden_layers)
+            "capas": str(hidden_layers),
+            "distribucion": distribucion.to_dict()
         }
         
-        log_to_file(f"Resultado: {resultado}")
-        
+        print(f"Resultado: {resultado}")
         return (resultado, modelo, scaler, encoder)
         
     except Exception as e:
-        error_msg = f"ERROR: {str(e)}\n{traceback.format_exc()}"
-        log_to_file(error_msg)
+        print(f"\n{'='*60}")
+        print(f"ERROR: {str(e)}")
+        print(f"{'='*60}")
+        import traceback
+        traceback.print_exc()
         raise
 
 
 def predecir_evento(modelo, scaler, encoder, frecuencia, duracion, energia):
-    X = np.array([[frecuencia, duracion, energia]])
-    X_scaled = scaler.transform(X)
+    """Predice el tipo de evento sísmico."""
     
-    pred = modelo.predict(X_scaled)[0]
-    prob = modelo.predict_proba(X_scaled)[0]
+    X = np.array([[frecuencia, duracion, energia]])
+    X = scaler.transform(X)
+    
+    pred = modelo.predict(X)[0]
+    prob = modelo.predict_proba(X)[0]
     
     tipo = encoder.inverse_transform([pred])[0]
     

@@ -1,43 +1,16 @@
 from flask import Flask, render_template, send_from_directory, request, jsonify
 import os
-import sys
-import traceback
 import pandas as pd
 import joblib
+from utils import entrenar_modelo, predecir_evento
 from flask_cors import CORS
-
-# =====================================================
-# LOGGING DE ERRORES A ARCHIVO
-# =====================================================
-def log_error(msg):
-    with open("error_log.txt", "a", encoding="utf-8") as f:
-        f.write(f"\n{'='*60}\n")
-        f.write(f"{msg}\n")
-        f.write(f"{'='*60}\n")
-
-# Limpiar log anterior
-if os.path.exists("error_log.txt"):
-    os.remove("error_log.txt")
-
-log_error("Servidor iniciado")
-
-# =====================================================
-# IMPORTAR UTILS CON MANEJO DE ERRORES
-# =====================================================
-try:
-    from utils import entrenar_modelo, predecir_evento
-    log_error("utils importado correctamente")
-except Exception as e:
-    log_error(f"ERROR importando utils: {str(e)}\n{traceback.format_exc()}")
-    # Crear funciones dummy para que no falle el import
-    def entrenar_modelo(ruta):
-        raise Exception(f"Error importando utils: {str(e)}")
-    def predecir_evento(*args, **kwargs):
-        raise Exception(f"Error importando utils: {str(e)}")
 
 app = Flask(__name__)
 CORS(app)
 
+# =====================================================
+# CONFIGURACIÓN
+# =====================================================
 UPLOAD_FOLDER = "datos/uploads"
 PROCESSED_FOLDER = "datos/processed"
 MODEL_FOLDER = "modelo"
@@ -52,6 +25,9 @@ encoder = None
 dataset_info = {}
 
 
+# =====================================================
+# RUTAS
+# =====================================================
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -92,6 +68,7 @@ def subir():
 
         dataset_info = {
             "nombre": file.filename,
+            "tamaño": os.path.getsize(ruta_uploads),
             "registros": len(df),
             "columnas": list(df.columns),
             "preview": df.head(10).to_dict(orient="records")
@@ -106,7 +83,6 @@ def subir():
         })
 
     except Exception as e:
-        log_error(f"Error en /subir: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"error": f"Error al leer el archivo: {str(e)}"}), 400
 
 
@@ -117,36 +93,33 @@ def entrenar():
     data = request.get_json()
     ruta = data.get("ruta")
 
-    log_error(f"PETICIÓN /entrenar - ruta: {ruta}")
+    print(f"\n{'='*60}")
+    print(f"PETICIÓN /entrenar recibida")
+    print(f"Ruta: {ruta}")
+    print(f"{'='*60}")
 
     if not ruta or not os.path.exists(ruta):
-        log_error(f"Archivo no encontrado: {ruta}")
+        print(f"ERROR: Archivo no encontrado: {ruta}")
         return jsonify({"error": "Archivo no encontrado", "accuracy": 0}), 404
 
     try:
-        log_error("Llamando a entrenar_modelo...")
         resultado, modelo, scaler, encoder = entrenar_modelo(ruta)
         
-        log_error(f"Resultado: {resultado}")
-        
-        # Asegurar accuracy
-        if "accuracy" not in resultado or resultado["accuracy"] is None:
-            resultado["accuracy"] = 0
-        try:
-            resultado["accuracy"] = float(resultado["accuracy"])
-        except:
+        # Asegurar que accuracy existe
+        if "accuracy" not in resultado:
             resultado["accuracy"] = 0
             
-        log_error(f"Devolviendo: {resultado}")
+        print(f"Devolviendo resultado: {resultado}")
         return jsonify(resultado)
         
     except Exception as e:
-        error_msg = f"ERROR en /entrenar: {str(e)}\n{traceback.format_exc()}"
-        log_error(error_msg)
+        import traceback
+        print(f"\nERROR en /entrenar: {str(e)}")
+        traceback.print_exc()
         return jsonify({
             "error": str(e),
             "accuracy": 0,
-            "detalle": "Revisa error_log.txt para más información"
+            "detalle": "Revisa la terminal del servidor para más información"
         }), 500
 
 
@@ -159,8 +132,8 @@ def predecir():
             modelo = joblib.load(os.path.join(MODEL_FOLDER, "modelo.pkl"))
             scaler = joblib.load(os.path.join(MODEL_FOLDER, "scaler.pkl"))
             encoder = joblib.load(os.path.join(MODEL_FOLDER, "encoder.pkl"))
-        except Exception as e:
-            return jsonify({"error": f"Modelo no entrenado. Error: {str(e)}"}), 400
+        except:
+            return jsonify({"error": "Modelo no entrenado. Entrena primero."}), 400
 
     data = request.get_json()
 
@@ -174,7 +147,6 @@ def predecir():
         return jsonify(resultado)
 
     except Exception as e:
-        log_error(f"ERROR en /predecir: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
